@@ -9,10 +9,9 @@
 \RequirePackage{textcomp, gensymb}
 % figures
 \RequirePackage{graphicx}
-\graphicspath{ {images/} }
 \RequirePackage{subcaption}
 % biblio
-\RequirePackage[nottoc,notlot,notlof,numbib]{tocbibind}
+\RequirePackage[nottoc,notlot,notlof]{tocbibind}
 \RequirePackage{natbib}
 \onehalfspacing
 % code
@@ -32,16 +31,13 @@
     {\Huge \bfseries Computing CW -- Summary}
 \end{center}
 
-\hspace{-1cm}
-Students: Dylan CHUA -- 02131550, Chong Hui FENG -- 02015459 \hfill Path: B, Words: 999/1000
-\hspace{-1cm}
+\noindent Dylan CHUA -- 02131550, Chong Hui FENG -- 02015459 \hfill Path: B, Words: 975/1000
 \vspace{1em}
 \hrule
-
 \vspace{1em}
 
 \begin{qn}{What physics are you trying to model and analyse? (Describe clearly, in words, what physical phenomenon you wish to analyse)}
-    The Black-Scholes model has been chosen to predict the dynamics of a financial market. As the stock price is random and follows a Brownian motion with drift, there is a range of possibilities of the stock price at a specified date in the future. In the market there is an option on the stock, which gives the buyer of the option the possibility to buy the stock at the strike price in the future. There exists a fair value of the option which eliminates risk. The value is dependent on the time to expiry t and stock price S, which can be described using a PDE.
+    The Black-Scholes model has been chosen to predict the dynamics of a financial market. As the stock price is random and follows a Brownian motion with drift, there is a range of possibilities of the stock price at a specified date in the future. In the market there is an option on the stock, which gives the buyer of the option the possibility to buy the stock at the strike price in the future. There exists a fair value of the option which eliminates risk. The value is dependent on the time elapsed $t$ and stock price $S$, which can be described using a PDE.
 \end{qn}
 
 \begin{qn}{What PDE are you trying to solve, associated with the Physics described in A? (write the PDE)}
@@ -51,7 +47,7 @@ Students: Dylan CHUA -- 02131550, Chong Hui FENG -- 02015459 \hfill Path: B, Wor
         \frac{\partial V}{\partial t} + \frac{1}{2}\sigma^2S^2\frac{\partial^2 V}{\partial S^2} + rS\frac{\partial V}{\partial S} - rV = 0
     \end{equation}
     
-    Based on market conditions (risk-free interest rate $r$, volatility $\sigma$ and strike price $K$), theoretical estimates for European-style options ($V$) can be obtained for different values of stock price $S$ and time to expiry $t$.
+    Based on market conditions (risk-free interest rate $r$, volatility $\sigma$ and strike price $K$), theoretical estimates for European-style options ($V$) can be obtained for different values of stock price $S$ and time elapsed $t$.
 \end{qn}
 
 \begin{qn}{Boundary value and/or initial values for my specific problem: (be CONSISTENT with what you wrote in A)}
@@ -84,8 +80,8 @@ As $S\ \rightarrow \infty$, it becomes ever more likely that the option will be 
 An explicit finite difference method and an implicit method (Crank-Nicolson) were used. Out of all the implicit methods, Crank-Nicolson was chosen as it is one of the most popular finite difference schemes used to approximate the Black-Scholes PDE \citep{duffy}.
 \end{qn}
 
-\begin{qn}{I am going to discretise my PDE as the following (show the steps from continuous to discrete equation and boundary/initial conditions:}
-Both methods employ a forward difference in time, and a central difference in stock price. To convert the PDE from a backwards to a forwards equation, a time substitution can be made by:
+\begin{qn}{I am going to discretise my PDE as the following (show the steps from continuous to discrete equation and boundary/initial conditions):}
+Both methods employ a forward difference in time, and a central difference in stock price. To convert the PDE from a backwards to a forwards equation, a time substitution can be made by using time to expiry $\tau$:
 
 \begin{equation}
     \begin{aligned}
@@ -171,14 +167,14 @@ This is implicit as $V_{S,\tau+k}$ is dependent on $V_{S-h,\tau+k}$ and $V_{S+h,
 
 \begin{figure}[h]
     \centering
-    \includegraphics[width=0.8\textwidth]{explicit}
+    \includegraphics[width=\textwidth]{explicit}
     \caption{Call option values using explicit method}
     \label{fig:explicit}
 \end{figure}
 
 \begin{figure}[h]
     \centering
-    \includegraphics[width=0.8\textwidth]{implicit}
+    \includegraphics[width=\textwidth]{implicit}
     \caption{Call option values using implicit method}
     \label{fig:implicit}
 \end{figure}
@@ -196,12 +192,11 @@ Upon expiry, the call option $V$ is worth either the difference ($S-K$) between 
 
 When the expiry is sufficiently far away i.e. nowhere close to maturing, the call option value tends to its stock price $S$. 
 
-\newpage
 The grid was then made finer by using a smaller step in stock price of 0.01.
 
 \begin{figure}[h]
     \centering
-    \includegraphics[width=0.8\textwidth]{explicit_fine}
+    \includegraphics[width=\textwidth]{explicit_fine}
     \caption{Call option values using explicit method with finer grid}
     \label{fig:explicit_fine}
 \end{figure}
@@ -214,14 +209,14 @@ In the discretised equation, the weightage of the corresponding node at the prio
     \frac{1}{k}-\frac{\sigma^2S^2}{h^2}-r>0
 \end{equation}
 
-This places a large constraint on the mesh size for stock price – with the parameters used in this coursework, mesh size $h \geq 0.5$ and time step $k \leq 0.01$  in order for the explicit method to be stable and use yield useful results. This constraint makes the explicit method largely impractical for precise determination of call option values. As evident in Figure \ref*{fig:explicit_fine}, the values are unstable and grow very large, failing to compute.
+This places a large constraint on the mesh size for stock price -- with the parameters used in this coursework, mesh size $h \geq 0.5$ and time step $k \leq 0.01$  in order for the explicit method to be stable and yield useful results. This constraint makes the explicit method largely impractical for precise determination of call option values. As evident in Figure \ref*{fig:explicit_fine}, the values are unstable and grow very large, failing to compute.
 
 \newpage
 \underline{Implicit Method}
 
 \begin{figure}[h]
     \centering
-    \includegraphics[width=0.8\textwidth]{implicit_fine}
+    \includegraphics[width=\textwidth]{implicit_fine}
     \caption{Call option values using implicit method with finer grid}
     \label{fig:implicit_fine}
 \end{figure}
