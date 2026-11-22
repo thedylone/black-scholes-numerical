@@ -82,7 +82,7 @@ describe("Crank–Nicolson scheme", () => {
 });
 
 describe("matches the notebook's coarse grid (T=10, σ=0.8, K=2, h=0.5, k=0.01)", () => {
-  // Reference values from the notebook's NumPy formulation (see README).
+  // Reference values from running the notebook (Computing_CW.ipynb).
   const p: Params = { sigma: 0.8, r: 0.05, K: 2, T: 10, sMax: 5, N: 10, M: 1000 };
   const explicitRef = [0, 0.31279958, 0.66889904, 1.0408571, 1.42154642, 1.80795312, 2.19848652, 2.59219051, 2.9884386, 3.38679422, 3.78693868];
   const implicitRef = [0, 0.31269406, 0.66876909, 1.04072669, 1.4214261, 1.80784833, 2.19840034, 2.59212471, 2.98839424, 3.38677188, 3.78693868];

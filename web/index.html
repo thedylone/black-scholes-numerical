@@ -185,33 +185,6 @@
             fraction of a second.
           </p>
         </section>
-
-        <section class="card prose">
-          <p class="label">Notes on the port</p>
-          <h2>Matching the notebook</h2>
-          <p>
-            The TypeScript solvers follow the notebook's grid, boundary conditions and coefficients, with two small
-            differences where the code doesn't match the derivation written above it:
-          </p>
-          <ul>
-            <li>
-              In the explicit loop, the weight on <span class="tex">V_{S-h,\tau}</span> is written as
-              <span class="tex">\alpha S^2 + \beta S/2</span>. The derivation gives
-              <span class="tex">\alpha S^2 - \beta S/2</span>, and the port uses that. With the sign as written, the
-              explicit result on the notebook's coarse grid sits up to 0.58 above the Crank–Nicolson result, which
-              agrees with the corrected scheme to within 2 × 10<sup>−4</sup>.
-            </li>
-            <li>
-              The Crank–Nicolson step applies the far-field condition at the old time level
-              <span class="tex">\tau_i</span>. The port uses the new level <span class="tex">\tau_{i+1}</span>.
-            </li>
-          </ul>
-          <p>
-            A test suite checks both solvers against the closed-form price, checks that the explicit scheme blows up
-            once <span class="tex">\lambda &gt; 1</span>, checks second-order convergence for Crank–Nicolson, and
-            compares against NumPy reference values computed from the notebook's formulation.
-          </p>
-        </section>
       </article>
     </main>
 
