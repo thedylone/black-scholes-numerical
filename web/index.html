@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Black–Scholes, by finite differences · Dylan Chua</title>
+    <meta
+      name="description"
+      content="Interactive explicit and Crank–Nicolson finite-difference solvers for the Black–Scholes PDE, compared live against the analytic price."
+    />
+    <meta property="og:title" content="Black–Scholes, by finite differences" />
+    <meta property="og:description" content="Explicit and Crank–Nicolson solvers for the Black–Scholes PDE, running in your browser." />
+    <meta property="og:image" content="https://projects.thedylone.com/black-scholes-numerical/gallery-cover.webp" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%231e2f4d'/%3E%3Cpath d='M5 25 L14 25 L27 9' stroke='%23b8860b' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+  </head>
+  <body>
+    <div class="backdrop" aria-hidden="true"></div>
+
+    <nav class="topbar wrap">
+      <a class="crumb" href="https://projects.thedylone.com/">← projects.thedylone.com</a>
+      <a class="crumb" href="https://github.com/thedylone/black-scholes-numerical">GitHub ↗</a>
+    </nav>
+
+    <header class="hero wrap">
+      <p class="label">MECH50003 · Computing coursework</p>
+      <h1>Black–Scholes, by finite differences</h1>
+      <p class="lede">
+        Pricing a European call by solving the Black–Scholes PDE on a grid, with an explicit scheme and with
+        Crank–Nicolson. Both are ported from the coursework notebook and run live below, checked against the
+        closed-form price.
+      </p>
+      <ul class="tags">
+        <li>Numerical PDEs</li>
+        <li>Finite differences</li>
+        <li>Crank–Nicolson</li>
+        <li>TypeScript</li>
+      </ul>
+    </header>
+
+    <main class="wrap">
+      <section class="card demo" id="demo" aria-label="Interactive solver">
+        <aside class="controls">
+          <div class="field">
+            <span class="label">Scheme</span>
+            <div class="segmented" role="radiogroup" aria-label="Scheme">
+              <button type="button" role="radio" data-scheme="explicit" aria-checked="true">Explicit</button>
+              <button type="button" role="radio" data-scheme="implicit" aria-checked="false">Crank–Nicolson</button>
+            </div>
+          </div>
+
+          <div class="group">
+            <span class="label">Market</span>
+            <div class="slider" data-key="sigma"></div>
+            <div class="slider" data-key="r"></div>
+            <div class="slider" data-key="K"></div>
+            <div class="slider" data-key="T"></div>
+          </div>
+
+          <div class="group">
+            <span class="label">Grid</span>
+            <div class="slider" data-key="sMax"></div>
+            <div class="slider" data-key="N"></div>
+            <div class="slider" data-key="M"></div>
+            <p class="gridinfo" id="gridinfo"></p>
+          </div>
+
+          <div class="group">
+            <span class="label">Presets</span>
+            <div class="presets" id="presets"></div>
+          </div>
+        </aside>
+
+        <div class="plots">
+          <div class="stats" id="stats"></div>
+
+          <figure class="chart">
+            <figcaption>
+              <span class="chart-title">Option value <i>V</i>(<i>S</i>)</span>
+              <span class="legend" id="legend-v"></span>
+            </figcaption>
+            <div class="plot" id="plot-v"></div>
+            <div class="tooltip" id="tooltip" hidden></div>
+          </figure>
+
+          <figure class="chart">
+            <figcaption>
+              <span class="chart-title">Absolute error |<i>V</i> − <i>V</i><sub>BS</sub>|, log scale</span>
+            </figcaption>
+            <div class="plot" id="plot-e"></div>
+          </figure>
+
+          <div class="timebar">
+            <button type="button" class="play" id="play" aria-label="Play through time to expiry">▶</button>
+            <label class="time">
+              <span id="tau-label">τ</span>
+              <input type="range" id="tau" min="0" max="120" value="120" step="1" aria-label="Time to expiry" />
+            </label>
+          </div>
+
+          <div class="stability" id="stability"></div>
+        </div>
+      </section>
+
+      <article class="writeup">
+        <section class="card prose">
+          <p class="label">The model</p>
+          <h2>A call option as a diffusion problem</h2>
+          <p>
+            A European call gives the right to buy a stock at the strike <span class="tex">K</span> at the expiry
+            <span class="tex">T</span>. If the stock follows geometric Brownian motion with volatility
+            <span class="tex">\sigma</span> and the risk-free rate is <span class="tex">r</span>, its fair value
+            <span class="tex">V(S,t)</span> satisfies the Black–Scholes equation
+          </p>
+          <div class="tex display">\frac{\partial V}{\partial t} + \tfrac{1}{2}\sigma^2S^2\frac{\partial^2 V}{\partial S^2} + rS\frac{\partial V}{\partial S} - rV = 0.</div>
+          <p>
+            It is a convection–diffusion equation that runs backwards: we know the payoff at expiry and want the value
+            today. Substituting the time to expiry <span class="tex">\tau = T - t</span> (so
+            <span class="tex">\partial_t = -\partial_\tau</span>) turns it into a forward problem,
+          </p>
+          <div class="tex display">-V_\tau + \tfrac{1}{2}\sigma^2S^2V_{SS} + rSV_S - rV = 0,</div>
+          <p>with the payoff as the initial condition and two conditions in price:</p>
+          <div class="tex display">V(S,0)=\max\{S-K,\,0\},\qquad V(0,\tau)=0,\qquad V(S_{\max},\tau)= S_{\max}-Ke^{-r\tau}.</div>
+          <p>
+            The last condition is the large-<span class="tex">S</span> asymptote applied at a finite
+            <span class="tex">S_{\max}</span>. That truncation is why the error plot rises towards the right-hand
+            edge, especially for long maturities or high volatility (try the notebook preset).
+          </p>
+        </section>
+
+        <section class="card prose">
+          <p class="label">Discretisation</p>
+          <h2>The grid</h2>
+          <p>
+            Prices are sampled at <span class="tex">S_j = jh</span> with <span class="tex">h = S_{\max}/N</span>,
+            and time to expiry at <span class="tex">\tau_i = ik</span> with <span class="tex">k = T/M</span>. As in
+            the notebook, two coefficients collect the repeated factors:
+          </p>
+          <div class="tex display">\alpha = \frac{\sigma^2}{2h^2}, \qquad \beta = \frac{r}{h}.</div>
+          <p>Both schemes use a forward difference in <span class="tex">\tau</span> and central differences in <span class="tex">S</span>.</p>
+        </section>
+
+        <section class="card prose">
+          <p class="label">Scheme 1</p>
+          <h2>Explicit finite differences</h2>
+          <p>Evaluating every <span class="tex">S</span>-derivative at the known level <span class="tex">\tau</span> gives</p>
+          <div class="tex display">-\frac{V_{S,\tau+k}-V_{S,\tau}}{k} + \alpha S^2\left(V_{S+h,\tau}-2V_{S,\tau}+V_{S-h,\tau}\right) + \beta S\,\frac{V_{S+h,\tau}-V_{S-h,\tau}}{2} - rV_{S,\tau} = 0,</div>
+          <p>so each new value is a weighted sum of three old ones:</p>
+          <div class="tex display">V_{S,\tau+k} = k\Big[\big(\alpha S^2-\tfrac{\beta S}{2}\big)V_{S-h,\tau} + \big(\tfrac{1}{k}-2\alpha S^2-r\big)V_{S,\tau} + \big(\alpha S^2+\tfrac{\beta S}{2}\big)V_{S+h,\tau}\Big].</div>
+          <h3>Why it blows up</h3>
+          <p>
+            The weight on <span class="tex">V_{S,\tau}</span> must stay positive at every node. Otherwise errors
+            change sign from one step to the next and grow geometrically. The worst node is
+            <span class="tex">S = S_{\max} = Nh</span>, which gives
+          </p>
+          <div class="tex display">\frac{1}{k} - \frac{\sigma^2 S_{\max}^2}{h^2} - r &gt; 0 \quad\Longleftrightarrow\quad \lambda = k\left(\sigma^2N^2 + r\right) &lt; 1.</div>
+          <p>
+            This CFL-type limit is quadratic in the grid resolution: doubling <span class="tex">N</span> forces four
+            times as many time steps. The notebook's fine grid (<span class="tex">h = 0.01</span>,
+            <span class="tex">N = 500</span>, <span class="tex">\sigma = 0.8</span>) would need
+            <span class="tex">k &lt; 6.25\times10^{-6}</span>, or 1.6 million steps over ten years. With
+            <span class="tex">k = 0.01</span> it gives <span class="tex">\lambda \approx 1600</span>. Load the
+            <em>Notebook fine grid</em> preset and scrub the time slider to watch the oscillation start at the
+            right-hand edge and swamp the solution.
+          </p>
+        </section>
+
+        <section class="card prose">
+          <p class="label">Scheme 2</p>
+          <h2>Crank–Nicolson</h2>
+          <p>
+            Crank–Nicolson averages each derivative, and the <span class="tex">rV</span> term, between the two time
+            levels:
+          </p>
+          <div class="tex display">V_S \approx \tfrac{1}{4h}\left(V_{S+h,\tau+k}-V_{S-h,\tau+k}+V_{S+h,\tau}-V_{S-h,\tau}\right),\quad V_{SS} \approx \tfrac{1}{2h^2}\left(\delta^2 V_{\tau+k} + \delta^2 V_{\tau}\right),\quad V \approx \tfrac12\left(V_{S,\tau+k}+V_{S,\tau}\right).</div>
+          <p>
+            Here <span class="tex">\delta^2 V = V_{S+h}-2V_{S}+V_{S-h}</span>. Collecting the unknowns on the left
+            leaves one tridiagonal system per time step:
+          </p>
+          <div class="tex display">\big(\tfrac{\alpha S^2}{2}-\tfrac{\beta S}{4}\big)V_{S-h,\tau+k} + \big(-\tfrac1k-\alpha S^2-\tfrac r2\big)V_{S,\tau+k} + \big(\tfrac{\alpha S^2}{2}+\tfrac{\beta S}{4}\big)V_{S+h,\tau+k} = B_S(V_\tau).</div>
+          <p>
+            The scheme is unconditionally stable and second-order accurate in both <span class="tex">h</span> and
+            <span class="tex">k</span>. The notebook builds the full matrix and calls
+            <code>np.linalg.solve</code>, which costs <span class="tex">O(N^3)</span> per step. This port uses the
+            Thomas algorithm, which costs <span class="tex">O(N)</span>, so even a 500 × 20 000 grid solves in a
+            fraction of a second.
+          </p>
+        </section>
+
+        <section class="card prose">
+          <p class="label">Notes on the port</p>
+          <h2>Matching the notebook</h2>
+          <p>
+            The TypeScript solvers follow the notebook's grid, boundary conditions and coefficients, with two small
+            differences where the code doesn't match the derivation written above it:
+          </p>
+          <ul>
+            <li>
+              In the explicit loop, the weight on <span class="tex">V_{S-h,\tau}</span> is written as
+              <span class="tex">\alpha S^2 + \beta S/2</span>. The derivation gives
+              <span class="tex">\alpha S^2 - \beta S/2</span>, and the port uses that. With the sign as written, the
+              explicit result on the notebook's coarse grid sits up to 0.58 above the Crank–Nicolson result, which
+              agrees with the corrected scheme to within 2 × 10<sup>−4</sup>.
+            </li>
+            <li>
+              The Crank–Nicolson step applies the far-field condition at the old time level
+              <span class="tex">\tau_i</span>. The port uses the new level <span class="tex">\tau_{i+1}</span>.
+            </li>
+          </ul>
+          <p>
+            A test suite checks both solvers against the closed-form price, checks that the explicit scheme blows up
+            once <span class="tex">\lambda &gt; 1</span>, checks second-order convergence for Crank–Nicolson, and
+            compares against NumPy reference values computed from the notebook's formulation.
+          </p>
+        </section>
+      </article>
+    </main>
+
+    <footer class="wrap footer">
+      <span>Dylan Chua &amp; Chong Hui Feng · Imperial College London</span>
+      <span>
+        <a href="https://github.com/thedylone/black-scholes-numerical">Source on GitHub</a> ·
+        <a href="https://projects.thedylone.com/">More projects</a>
+      </span>
+    </footer>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
