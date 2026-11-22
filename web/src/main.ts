@@ -1,11 +1,3 @@
-import "@fontsource/newsreader/400.css";
-import "@fontsource/newsreader/500.css";
-import "@fontsource/newsreader/400-italic.css";
-import "@fontsource/ibm-plex-sans/400.css";
-import "@fontsource/ibm-plex-sans/500.css";
-import "@fontsource/ibm-plex-sans/600.css";
-import "@fontsource/ibm-plex-mono/400.css";
-import "@fontsource/ibm-plex-mono/500.css";
 import "katex/dist/katex.min.css";
 import "./style.css";
 
@@ -14,8 +6,11 @@ import { bsCall } from "./analytic";
 import { render } from "./plot";
 import { maxStableK, Params, Scheme, solve, Solution, stabilityRatio } from "./solver";
 
-const NAVY = "#1e2f4d";
-const GOLD = "#b8860b";
+// Chart colours come from the kit tokens: --series-1 (analytic), --series-2 (numerical).
+const token = (name: string) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+const NAVY = token("--series-1") || "#1e2f4d";
+const GOLD = token("--series-2") || "#b8860b";
+const FAINT = token("--color-text-faint") || "rgba(15, 23, 42, 0.42)";
 const SNAPSHOTS = 120;
 
 // ---------- KaTeX ----------
@@ -27,14 +22,13 @@ document.querySelectorAll<HTMLElement>(".tex").forEach((el) => {
 });
 
 // ---------- number formatting ----------
-const SUP: Record<string, string> = { "-": "⁻", "+": "", "0": "⁰", "1": "¹", "2": "²", "3": "³", "4": "⁴", "5": "⁵", "6": "⁶", "7": "⁷", "8": "⁸", "9": "⁹" };
 function sci(v: number, digits = 2): string {
   if (!Number.isFinite(v)) return Number.isNaN(v) ? "NaN" : "∞";
   if (v === 0) return "0";
   const a = Math.abs(v);
   if (a >= 1e-3 && a < 1e4) return String(parseFloat(v.toPrecision(digits + 1)));
   const [m, e] = v.toExponential(digits).split("e");
-  return `${parseFloat(m)} × 10${e.split("").map((c) => SUP[c]).join("")}`;
+  return `${parseFloat(m)} × 10<sup>${e.replace("+", "").replace("-", "−")}</sup>`;
 }
 
 // ---------- controls ----------
@@ -90,12 +84,12 @@ const fromSlider = (d: SliderDef, x: number) => {
 
 const inputs = {} as Record<keyof Params, { range: HTMLInputElement; out: HTMLOutputElement }>;
 
-document.querySelectorAll<HTMLElement>(".slider").forEach((el) => {
+document.querySelectorAll<HTMLElement>(".pk-control[data-key]").forEach((el) => {
   const key = el.dataset.key as keyof Params;
   const d = DEFS[key];
   const id = `in-${key}`;
   el.innerHTML = `
-    <div class="slider-head"><label for="${id}">${d.label}</label><output for="${id}"></output></div>
+    <div class="bs-control-head"><label for="${id}">${d.label}</label><output for="${id}"></output></div>
     <input type="range" id="${id}" min="${d.log ? 0 : d.min}" max="${d.log ? LOG_RES : d.max}" step="${d.log ? 1 : d.step}" />`;
   const range = el.querySelector("input")!;
   const out = el.querySelector("output")!;
@@ -121,7 +115,7 @@ function syncInputs() {
     inputs[key].out.textContent = d.fmt(state.p[key]);
   });
   document.querySelectorAll<HTMLButtonElement>("[data-scheme]").forEach((b) => {
-    b.setAttribute("aria-checked", String(b.dataset.scheme === state.scheme));
+    b.setAttribute("aria-pressed", String(b.dataset.scheme === state.scheme));
   });
   const h = state.p.sMax / state.p.N;
   const k = state.p.T / state.p.M;
@@ -141,7 +135,7 @@ const presetBox = document.getElementById("presets")!;
 PRESETS.forEach((pr) => {
   const b = document.createElement("button");
   b.type = "button";
-  b.className = "chip";
+  b.className = "pk-btn pk-btn-secondary bs-btn-sm";
   b.textContent = pr.name;
   b.addEventListener("click", () => {
     state.scheme = pr.scheme;
@@ -212,7 +206,7 @@ function draw() {
     xRef: { at: p.K, label: "K" },
     hover: state.hover,
     series: [
-      { ys: payoff, color: "rgba(15,23,42,0.4)", width: 1.25, dash: "2 4" },
+      { ys: payoff, color: FAINT, width: 1.25, dash: "2 4" },
       { ys: exact, color: NAVY, width: 2 },
       { ys: V, color: GOLD, width: 2, dash: showMarkers ? undefined : "6 4", markers: showMarkers },
     ],
@@ -243,20 +237,20 @@ function draw() {
   });
 
   document.getElementById("legend-v")!.innerHTML = `
-    <span class="key"><svg width="22" height="8"><line x1="1" x2="21" y1="4" y2="4" stroke="${GOLD}" stroke-width="2" ${showMarkers ? "" : 'stroke-dasharray="6 4"'}/>${showMarkers ? `<circle cx="11" cy="4" r="3.5" fill="${GOLD}"/>` : ""}</svg>${state.scheme === "explicit" ? "Explicit" : "Crank–Nicolson"}</span>
-    <span class="key"><svg width="22" height="8"><line x1="1" x2="21" y1="4" y2="4" stroke="${NAVY}" stroke-width="2"/></svg>Analytic</span>
-    <span class="key"><svg width="22" height="8"><line x1="1" x2="21" y1="4" y2="4" stroke="rgba(15,23,42,0.4)" stroke-width="1.25" stroke-dasharray="2 4"/></svg>Payoff</span>`;
+    <span class="bs-key"><svg width="22" height="8"><line x1="1" x2="21" y1="4" y2="4" stroke="${GOLD}" stroke-width="2" ${showMarkers ? "" : 'stroke-dasharray="6 4"'}/>${showMarkers ? `<circle cx="11" cy="4" r="3.5" fill="${GOLD}"/>` : ""}</svg>${state.scheme === "explicit" ? "Explicit" : "Crank–Nicolson"}</span>
+    <span class="bs-key"><svg width="22" height="8"><line x1="1" x2="21" y1="4" y2="4" stroke="${NAVY}" stroke-width="2"/></svg>Analytic</span>
+    <span class="bs-key"><svg width="22" height="8"><line x1="1" x2="21" y1="4" y2="4" stroke="${FAINT}" stroke-width="1.25" stroke-dasharray="2 4"/></svg>Payoff</span>`;
 
   // Stats
   const jK = Math.round(p.K / sol.h);
   const errK = Math.abs(V[jK] - exact[jK]);
   const offScale = blown || maxAbsV > yTop * 1.5;
   document.getElementById("stats")!.innerHTML = `
-    <div class="stat"><span class="label">Max error</span><strong>${sci(maxErr)}</strong></div>
-    <div class="stat"><span class="label">Error at S = K</span><strong>${sci(errK)}</strong></div>
-    <div class="stat"><span class="label">V(K) numerical</span><strong>${sci(V[jK], 4)}</strong></div>
-    <div class="stat"><span class="label">Solve time</span><strong>${state.ms < 1 ? "&lt; 1" : state.ms.toFixed(0)} ms</strong></div>
-    ${offScale ? `<p class="offscale" role="status"><span aria-hidden="true">⚠</span> Off the chart: max |V| = ${blown ? "overflow (∞ / NaN)" : sci(maxAbsV)}</p>` : ""}`;
+    <div class="pk-stat"><span class="pk-label">Max error</span><div class="pk-stat-value">${sci(maxErr)}</div></div>
+    <div class="pk-stat"><span class="pk-label">Error at S = K</span><div class="pk-stat-value">${sci(errK)}</div></div>
+    <div class="pk-stat"><span class="pk-label">V(K) numerical</span><div class="pk-stat-value">${sci(V[jK], 4)}</div></div>
+    <div class="pk-stat"><span class="pk-label">Solve time</span><div class="pk-stat-value">${state.ms < 1 ? "&lt; 1" : state.ms.toFixed(0)} ms</div></div>
+    ${offScale ? `<p class="bs-offscale" role="status"><span aria-hidden="true">⚠</span> Off the chart: max |V| = ${blown ? "overflow (∞ / NaN)" : sci(maxAbsV)}</p>` : ""}`;
 
   // Stability
   const lam = stabilityRatio(p);
@@ -266,28 +260,28 @@ function draw() {
   const isExp = state.scheme === "explicit";
   const verdict = isExp
     ? stable
-      ? `<span class="badge ok"><span aria-hidden="true">✓</span> Stable</span>`
-      : `<span class="badge bad"><span aria-hidden="true">⚠</span> Unstable</span>`
-    : `<span class="badge neutral"><span aria-hidden="true">✓</span> Unconditionally stable</span>`;
+      ? `<span class="bs-badge ok"><span aria-hidden="true">✓</span> Stable</span>`
+      : `<span class="bs-badge bad"><span aria-hidden="true">⚠</span> Unstable</span>`
+    : `<span class="bs-badge neutral"><span aria-hidden="true">✓</span> Unconditionally stable</span>`;
   const note = isExp
     ? stable
       ? `Within the limit <i>k</i> &lt; <i>k</i>* = ${sci(kStar, 3)}. Raise <i>N</i> or cut <i>M</i> to break it.`
       : `<i>k</i> is ${sci(lam, 2)}× the limit <i>k</i>* = ${sci(kStar, 3)}. Errors flip sign every step and grow.`
     : `For comparison, the explicit scheme on this grid ${stable ? "would also be stable" : `would be ${sci(lam, 2)}× over its limit`}.`;
   document.getElementById("stability")!.innerHTML = `
-    <div class="stab-head">
-      <span class="label">Explicit stability</span><span class="lam">λ = k(σ²N² + r) = ${sci(lam, 2)}</span>
+    <div class="bs-stab-head">
+      <span class="pk-label">Explicit stability</span><span class="bs-lam">λ = k(σ²N² + r) = ${sci(lam, 2)}</span>
       ${verdict}
     </div>
-    <div class="meter${isExp ? "" : " dim"}" aria-hidden="true">
-      <div class="meter-fill${stable ? "" : " over"}" style="width:${pos}%"></div>
-      <div class="meter-one" style="left:${(2 / 5) * 100}%"><span>λ = 1</span></div>
+    <div class="bs-meter${isExp ? "" : " dim"}" aria-hidden="true">
+      <div class="bs-meter-fill${stable ? "" : " over"}" style="width:${pos}%"></div>
+      <div class="bs-meter-one" style="left:${(2 / 5) * 100}%"><span>λ = 1</span></div>
     </div>
-    <div class="stab-foot">
+    <div class="bs-stab-foot">
       <p>${note}</p>
-      <div class="stab-actions">
-        <button type="button" class="chip" data-k="limit">Set k just below k*</button>
-        <button type="button" class="chip" data-k="break">Set k = 1.1 k*</button>
+      <div class="bs-buttons">
+        <button type="button" class="pk-btn pk-btn-secondary bs-btn-sm" data-k="limit">Set k just below k*</button>
+        <button type="button" class="pk-btn pk-btn-secondary bs-btn-sm" data-k="break">Set k = 1.1 k*</button>
       </div>
     </div>`;
 
@@ -324,8 +318,8 @@ function updateTooltip(sol: Solution, V: Float64Array, exact: Float64Array) {
   tooltip.hidden = false;
   tooltip.innerHTML = `
     <div><span>S</span><b>${sol.s[j].toFixed(3)}</b></div>
-    <div><span class="sw" style="background:${GOLD}"></span><span>${state.scheme === "explicit" ? "Explicit" : "CN"}</span><b>${sci(V[j], 4)}</b></div>
-    <div><span class="sw" style="background:${NAVY}"></span><span>Analytic</span><b>${sci(exact[j], 4)}</b></div>
+    <div><span class="bs-sw" style="background:${GOLD}"></span><span>${state.scheme === "explicit" ? "Explicit" : "CN"}</span><b>${sci(V[j], 4)}</b></div>
+    <div><span class="bs-sw" style="background:${NAVY}"></span><span>Analytic</span><b>${sci(exact[j], 4)}</b></div>
     <div><span>|Error|</span><b>${sci(Math.abs(V[j] - exact[j]))}</b></div>`;
   const fig = plotV.parentElement!.getBoundingClientRect();
   const w = tooltip.offsetWidth;
