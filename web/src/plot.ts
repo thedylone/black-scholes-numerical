@@ -26,9 +26,10 @@ export interface PlotOptions {
 
 export const PAD = { l: 52, r: 14, t: 10, b: 34 };
 
-const INK = "#0f172a";
-const MUTED = "rgba(15,23,42,0.55)";
-const HAIR = "rgba(15,23,42,0.12)";
+// Kit tokens, read at render time so the chart follows project-kit.css.
+function token(name: string, fallback: string): string {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
+}
 
 function niceStep(range: number, target: number): number {
   const raw = range / target;
@@ -48,6 +49,10 @@ function fmtPow(e: number): string {
 }
 
 export function render(el: HTMLElement, o: PlotOptions): (S: number) => number {
+  const INK = token("--color-text", "#0f172a");
+  const MUTED = token("--color-hairline-strong", "rgba(15, 23, 42, 0.2)");
+  const HAIR = token("--color-hairline", "rgba(15, 23, 42, 0.12)");
+  const BG = token("--color-bg", "#f9f9f6");
   const W = Math.max(280, el.clientWidth);
   const H = o.height;
   const iw = W - PAD.l - PAD.r;
@@ -69,14 +74,14 @@ export function render(el: HTMLElement, o: PlotOptions): (S: number) => number {
     for (let e = Math.ceil(y0); e <= y1; e += every) {
       const y = PAD.t + (1 - (e - y0) / span) * ih;
       parts.push(`<line x1="${PAD.l}" x2="${W - PAD.r}" y1="${y}" y2="${y}" stroke="${HAIR}"/>`);
-      parts.push(`<text x="${PAD.l - 8}" y="${y + 4}" text-anchor="end" class="tick">${fmtPow(e)}</text>`);
+      parts.push(`<text x="${PAD.l - 8}" y="${y + 4}" text-anchor="end" class="bs-tick">${fmtPow(e)}</text>`);
     }
   } else {
     const step = niceStep(o.yMax - o.yMin, ih < 200 ? 3 : 5);
     for (let v = Math.ceil(o.yMin / step) * step; v <= o.yMax + 1e-9; v += step) {
       const y = Y(v);
       parts.push(`<line x1="${PAD.l}" x2="${W - PAD.r}" y1="${y}" y2="${y}" stroke="${HAIR}"/>`);
-      parts.push(`<text x="${PAD.l - 8}" y="${y + 4}" text-anchor="end" class="tick">${fmtTick(v, step)}</text>`);
+      parts.push(`<text x="${PAD.l - 8}" y="${y + 4}" text-anchor="end" class="bs-tick">${fmtTick(v, step)}</text>`);
     }
   }
   // x ticks
@@ -84,15 +89,15 @@ export function render(el: HTMLElement, o: PlotOptions): (S: number) => number {
   for (let v = 0; v <= o.xMax + 1e-9; v += xs) {
     const x = X(v);
     parts.push(`<line x1="${x}" x2="${x}" y1="${PAD.t + ih}" y2="${PAD.t + ih + 5}" stroke="${MUTED}"/>`);
-    parts.push(`<text x="${x}" y="${PAD.t + ih + 18}" text-anchor="middle" class="tick">${fmtTick(v, xs)}</text>`);
+    parts.push(`<text x="${x}" y="${PAD.t + ih + 18}" text-anchor="middle" class="bs-tick">${fmtTick(v, xs)}</text>`);
   }
   parts.push(`<line x1="${PAD.l}" x2="${W - PAD.r}" y1="${PAD.t + ih}" y2="${PAD.t + ih}" stroke="${MUTED}"/>`);
-  if (o.xLabel) parts.push(`<text x="${W - PAD.r}" y="${H - 2}" text-anchor="end" class="axis">${o.xLabel}</text>`);
+  if (o.xLabel) parts.push(`<text x="${W - PAD.r}" y="${H - 2}" text-anchor="end" class="bs-axis">${o.xLabel}</text>`);
 
   if (o.xRef) {
     const x = X(o.xRef.at);
     parts.push(`<line x1="${x}" x2="${x}" y1="${PAD.t}" y2="${PAD.t + ih}" stroke="${HAIR}" stroke-dasharray="3 4"/>`);
-    parts.push(`<text x="${x + 5}" y="${PAD.t + 12}" class="axis">${o.xRef.label}</text>`);
+    parts.push(`<text x="${x + 5}" y="${PAD.t + 12}" class="bs-axis">${o.xRef.label}</text>`);
   }
 
   // Series, split into runs of finite values so blow-ups and gaps don't draw spurious lines.
@@ -121,7 +126,7 @@ export function render(el: HTMLElement, o: PlotOptions): (S: number) => number {
       for (let j = 0; j < o.xs.length; j++) {
         const v = s.ys[j];
         if (!Number.isFinite(v)) continue;
-        parts.push(`<circle cx="${X(o.xs[j]).toFixed(1)}" cy="${Y(yClamp(v)).toFixed(1)}" r="3.5" fill="${s.color}" stroke="#f9f9f6" stroke-width="1.5"/>`);
+        parts.push(`<circle cx="${X(o.xs[j]).toFixed(1)}" cy="${Y(yClamp(v)).toFixed(1)}" r="3.5" fill="${s.color}" stroke="${BG}" stroke-width="1.5"/>`);
       }
     }
   }
@@ -134,11 +139,11 @@ export function render(el: HTMLElement, o: PlotOptions): (S: number) => number {
     for (const s of o.series) {
       const v = s.ys[j];
       if (!Number.isFinite(v) || tf(v) < y0 || tf(v) > y1) continue;
-      parts.push(`<circle cx="${x}" cy="${Y(v)}" r="4.5" fill="${s.color}" stroke="#f9f9f6" stroke-width="2"/>`);
+      parts.push(`<circle cx="${x}" cy="${Y(v)}" r="4.5" fill="${s.color}" stroke="${BG}" stroke-width="2"/>`);
     }
   }
 
-  if (o.yLabel) parts.push(`<text x="${PAD.l - 44}" y="${PAD.t + 10}" class="axis">${o.yLabel}</text>`);
+  if (o.yLabel) parts.push(`<text x="${PAD.l - 44}" y="${PAD.t + 10}" class="bs-axis">${o.yLabel}</text>`);
 
   el.innerHTML = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img">${parts.join("")}</svg>`;
   // Return the inverse x-map so callers can turn pointer positions into S.
